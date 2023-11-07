@@ -1,0 +1,7 @@
+<!-- verify_totp.html -->
+<form method="POST" action="{{ url_for('verify_totp', username=username) }}">
+    {{ form.hidden_tag() }}
+    <label for="totp_token">TOTP Token:</label>
+    <input type="text" id="totp_token" name="totp_token" required>
+    <input type="submit" value="Verify">
+</form>

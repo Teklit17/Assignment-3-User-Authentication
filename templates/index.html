@@ -10,8 +10,19 @@
     <ul>
         {% for post in posts %}
             <li>{{ post.title }}</li>
+              <li>{{ post.content }}</li>
         {% endfor %}
     </ul>
     <a href="{{ url_for('create_post') }}">Create a Post</a>
+{% if current_user.is_authenticated %}
+    <div>
+        <a href="{{ url_for('logout') }}">Logout</a>
+
+    </div>
+    {% else %}
+    <div>
+        <a href="{{ url_for('login') }}">Login</a>
+        </div>
+ {% endif %}
 </body>
 </html>
