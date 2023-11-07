@@ -1,0 +1,12 @@
+# Directories
+.idea/
+instance/
+migrations/
+# static/
+# templates/
+venv/
+__pycache/
+
+# Files
+# app.py
+identifier.sqlite
