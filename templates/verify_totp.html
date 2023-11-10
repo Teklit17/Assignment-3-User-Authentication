@@ -1,4 +1,9 @@
 <!-- verify_totp.html -->
+
+<head>
+    <title>time-based one-time password</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='totp.css') }}">
+</head>
 <form method="POST" action="{{ url_for('verify_totp', username=username) }}">
     {{ form.hidden_tag() }}
     <label for="totp_token">TOTP Token:</label>

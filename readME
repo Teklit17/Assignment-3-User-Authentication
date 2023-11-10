@@ -1,0 +1,167 @@
+Client-Id  74421302354-sosuh2gfu8ao16d9rdcfsd6nbgt1tboh.apps.googleusercontent.com
+Client-secret ->  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
+My Project 84848
+
+
+
+Absolutely, I can guide you step by step to integrate OAuth2 client functionality with the Authorization Code Flow into your Flask application. We'll follow the process outlined in your request:
+
+### 1. Install Required Packages
+
+First, you need to install the necessary Python packages. `Flask-OAuthlib` is commonly used for OAuth integration in Flask applications.
+
+To install `Flask-OAuthlib`, run this command in your terminal:
+
+```bash
+pip install Flask-OAuthlib
+```
+
+If you encounter any issues, ensure you have `pip` installed and are using the correct Python environment.
+
+### 2. Register Your Application with OAuth Providers
+
+For each OAuth provider (like Google or GitHub), follow these steps:
+
+- **Google**:
+  1. Go to [Google Cloud Console](https://console.cloud.google.com/).
+  2. Create a new project or select an existing one.
+  3. Navigate to "APIs & Services" > "Credentials".
+  4. Click "Create credentials" and select "OAuth client ID".
+  5. Set up the consent screen and provide the necessary details.
+  6. For the application type, choose "Web application".
+  7. Add authorized redirect URIs, which should be your callback URL (e.g., `http://localhost:5000/login/google/authorized`).
+  8. Once created, note down the `client_id` and `client_secret`.
+
+- **GitHub**:
+  1. Go to your GitHub account's settings.
+  2. Click on "Developer settings" > "OAuth Apps" > "New OAuth App".
+  3. Fill in the application details. Set the "Authorization callback URL" to your callback URL (e.g., `http://localhost:5000/login/github/authorized`).
+  4. After registering, note the `client_id` and `client_secret`.
+
+### 3. Configure Your Application
+
+Add the OAuth configuration to your Flask application. You should add the client ID and secret for each provider to your app's config. For example:
+
+```python
+app.config['GOOGLE_CLIENT_ID'] = 'YourGoogleClientId'
+app.config['GOOGLE_CLIENT_SECRET'] = 'YourGoogleClientSecret'
+# Add similar configurations for other providers like GitHub
+```
+
+### 4. Update the User Model
+
+Modify your `User` model to store information retrieved from OAuth providers. For example, you might want to store the user's email and a profile picture URL. You can add fields to your `User` model like `email` and `profile_pic`.
+
+### 5. Implement OAuth Routes and Functions
+
+Create routes and functions for handling OAuth flows. You'll have routes for:
+
+- Redirecting users to the OAuth provider's login page.
+- Handling the callback from the provider.
+- Creating a new user in your database or logging in an existing user.
+
+Refer to the sample code provided in your request for implementation details. You'll have to do this for each provider.
+
+### 6. Securely Handle the OAuth Data
+
+Make sure you handle OAuth tokens and user data securely:
+
+- Do not expose tokens or sensitive user data.
+- Use HTTPS in production to protect data in transit.
+
+### 7. Front-End Integration
+
+Update your application’s front-end:
+
+- Add buttons or links for users to log in or register using each OAuth provider.
+- Ensure a smooth user experience and handle any errors gracefully.
+
+### 8. Test Your Implementation
+
+Thoroughly test the OAuth integration:
+
+- Ensure that the login and registration process works correctly.
+- Check that user data is correctly retrieved and stored.
+- Test with different accounts and handle any edge cases.
+
+### Conclusion
+
+This integration can be quite complex, especially in terms of security and data handling. Make sure to read the OAuth provider's documentation thoroughly for any specific requirements or best practices. Also, remember to handle user data responsibly and securely.
+
+To implement protection against brute force attacks in your Flask application, you can use a rate-limiting mechanism and impose a mandatory time-out after a specified number of consecutive failed login attempts. For this purpose, you can integrate a rate-limiter library like Flask-Limiter and enhance your login logic to track failed attempts. Here's how you can modify your code:
+
+1. **Install Flask-Limiter**: You need to install Flask-Limiter if you haven't already. Use `pip install Flask-Limiter` to install it.
+
+2. **Import Flask-Limiter**: Add the Flask-Limiter import to your existing imports:
+
+   ```python
+   from flask_limiter import Limiter
+   from flask_limiter.util import get_remote_address
+   ```
+
+3. **Initialize Flask-Limiter**: Initialize Flask-Limiter with your Flask application object:
+
+   ```python
+   limiter = Limiter(
+       app,
+       key_func=get_remote_address,
+       default_limits=["200 per day", "50 per hour"]
+   )
+   ```
+
+4. **Implementing Rate-Limiting and Time-Out Logic**: Add logic in your login route to handle rate limiting and mandatory time-out after three consecutive failed login attempts. You'll need to keep track of failed login attempts. This can be done using a simple mechanism like storing the count in the database or a more sophisticated approach like using Redis.
+
+5. **Modify the `login` Route**: Update the `/login` route to include rate limiting and track failed login attempts.
+
+Here's an example of how you can modify your `login` route:
+
+```python
+from datetime import datetime, timedelta
+
+# ...
+
+# Rate limit for the login route
+@app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")  # Adjust the rate limit as needed
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
+
+        user = User.query.filter_by(username=username).first()
+        if user:
+            # Check if the account is locked due to failed attempts
+            if user.lock_until and user.lock_until > datetime.utcnow():
+                flash('Account is temporarily locked due to multiple failed login attempts. Please try again later.', 'error')
+                return render_template('login.html', form=form)
+
+            # Check password
+            if bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
+                # Reset failed attempts
+                user.failed_attempts = 0
+                user.lock_until = None
+                db.session.commit()
+
+                # Redirect to TOTP verification
+                return redirect(url_for('verify_totp', username=user.username))
+            else:
+                # Increment failed attempts and lock account if necessary
+                user.failed_attempts += 1
+                if user.failed_attempts >= 3:
+                    user.lock_until = datetime.utcnow() + timedelta(minutes=15)  # Lock for 15 minutes
+                db.session.commit()
+                flash('Invalid username or password.', 'error')
+
+    return render_template('login.html', form=form)
+
+# ...
+
+# Add fields to User model to track failed attempts and lock time
+class User(db.Model, UserMixin):
+    # ...
+    failed_attempts = db.Column(db.Integer, default=0)
+    lock_until = db.Column(db.DateTime, nullable=True)
+```
+
+Remember to add appropriate fields (`failed_attempts` and `lock_until`) to your `User` model to track the number of failed login attempts and the time until which the account is locked. Also, adjust the rate limits and lockout duration as per your application's requirement.

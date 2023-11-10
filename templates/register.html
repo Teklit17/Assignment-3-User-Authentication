@@ -2,23 +2,21 @@
 <html>
 <head>
     <title>Register</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='register.css') }}">
 </head>
 <body>
     <h1>Register</h1>
     <form method="POST" action="{{ url_for('register') }}">
         {{ form.hidden_tag() }} <!-- CSRF Token -->
         <div>
-            {{ form.username.label }} <!-- Use form's label -->
-            {{ form.username(size=32) }} <!-- Use form's StringField -->
+            {{ form.username.label }} {{ form.username(size=32) }}
             {% for error in form.username.errors %}
                 <span style="color: red;">{{ error }}</span>
             {% endfor %}
         </div>
 
         <div>
-            {{ form.password.label }} <!-- Use form's label -->
-            {{ form.password(size=32) }} <!-- Use form's PasswordField -->
+            {{ form.password.label }} {{ form.password(size=32) }}
             {% for error in form.password.errors %}
                 <span style="color: red;">{{ error }}</span>
             {% endfor %}
@@ -29,6 +27,10 @@
         </div>
     </form>
 
-    <!-- Flash messages section remains unchanged -->
+    <!-- Google Sign-In Link -->
+    <p><a href="{{ url_for('authorize') }}">Register with Google</a></p>
+
+    <!-- Back Link -->
+    <p><a href="{{ url_for('index') }}">Back to Blog Posts</a></p>
 </body>
 </html>
