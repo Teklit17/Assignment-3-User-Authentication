@@ -1,21 +1,20 @@
-import os
-
-from flask import Flask, render_template, redirect, url_for, flash, session, send_file
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import DataRequired
-import bcrypt
-from flask_wtf.csrf import CSRFProtect
-from authlib.integrations.flask_client import OAuth
-import pyotp
-import qrcode
-import secrets
+import os, json, bcrypt, pyotp, qrcode, secrets;
+from datetime import datetime, timedelta;
+from flask import Flask, render_template, redirect, url_for, flash, session, send_file;
+from flask_sqlalchemy import SQLAlchemy;
+from flask_migrate import Migrate;
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user;
+from flask_wtf import FlaskForm;
+from wtforms import StringField, PasswordField, SubmitField;
+from wtforms.validators import DataRequired;
+from flask_wtf.csrf import CSRFProtect;
+from authlib.integrations.flask_client import OAuth;
 from flask_limiter import Limiter
-from datetime import datetime, timedelta
-import json
+
+
+
+
+
 
 app = Flask(__name__, template_folder='templates')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog.db'
