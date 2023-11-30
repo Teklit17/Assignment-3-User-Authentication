@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
+import os
+
+from flask import Flask, render_template, redirect, url_for, flash, session, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -12,14 +14,12 @@ import pyotp
 import qrcode
 import secrets
 from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from datetime import datetime, timedelta
 
-
 app = Flask(__name__, template_folder='templates')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog.db' # Replace with your Google Client Secret
-app.config['SECRET_KEY'] = 'your-secret-key'  # Replace with a secure secret key
-app.config['WTF_CSRF_ENABLED'] = True  # Enable CSRF protection
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog.db'
+app.config['SECRET_KEY'] = 'your-secret-key'
+app.config['WTF_CSRF_ENABLED'] = True
 csrf = CSRFProtect(app)
 
 db = SQLAlchemy(app)
@@ -32,7 +32,6 @@ limiter = Limiter(
     app,
     default_limits=["200 per day", "50 per hour"]
 )
-
 
 oauth = OAuth(app)
 google = oauth.register(
@@ -47,22 +46,18 @@ google = oauth.register(
 )
 
 
-
-# Define RegistrationForm
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Register')
 
 
-# Define LoginForm
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Login')
 
 
-# Define a User class
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -70,7 +65,6 @@ class User(db.Model, UserMixin):
     totp_secret = db.Column(db.String(16))
     google_id = db.Column(db.String(120), unique=True, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=True)
-    # Relationship to link users to their posts
     posts = db.relationship('Post', backref='author', lazy=True)
     failed_attempts = db.Column(db.Integer, default=0)
     lock_until = db.Column(db.DateTime, nullable=True)
@@ -88,20 +82,18 @@ class VerifyTOTPForm(FlaskForm):
     submit = SubmitField('Verify')
 
 
-# Define PostForm
 class PostForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     content = StringField('Content', validators=[DataRequired()])
     submit = SubmitField('Create Post')
 
 
-# Create a user loader function
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-# Function to hash passwords
+# hash passwords
 def hash_password(password):
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
@@ -121,7 +113,6 @@ def authorize():
     try:
         token = google.authorize_access_token()
     except Exception as e:
-        # Handle the error appropriately, maybe log it, and redirect
         flash("Authorization failed or was cancelled: " + str(e), "error")
         return redirect(url_for('login'))
 
@@ -131,15 +122,13 @@ def authorize():
     # Check if user exists
     user = User.query.filter_by(google_id=user_info['id']).first()
     if not user:
-        # User not found, create a new user
-        # Generate a secure, random placeholder password
         placeholder_password = secrets.token_hex(16)
 
         user = User(
             username=user_info['name'],  # Assuming you have a username field
             google_id=user_info['id'],
             email=user_info['email'],
-            password = hash_password(placeholder_password)
+            password=hash_password(placeholder_password)
             # You can add other fields here as needed
         )
         db.session.add(user)
@@ -148,13 +137,12 @@ def authorize():
     # Log in the user
     login_user(user, remember=True)
 
-    # Redirect to a desired page, e.g., the home page
     return redirect(url_for('index'))
 
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    form = RegistrationForm()
+    form = RegistrationForm()  # Assuming you have a form class defined
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
@@ -177,8 +165,7 @@ def register():
         db.session.commit()
 
         # Generate QR code for TOTP
-        totp_uri = pyotp.totp.TOTP(new_user.totp_secret).provisioning_uri(name=new_user.username,
-                                                                          issuer_name="YourAppName")
+        totp_uri = pyotp.TOTP(new_user.totp_secret).provisioning_uri(name=new_user.username, issuer_name="YourAppName")
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -187,24 +174,31 @@ def register():
         )
         qr.add_data(totp_uri)
         qr.make(fit=True)
-
         img = qr.make_image(fill_color="black", back_color="white")
+
+        # Ensure the static/qrcodes directory exists
+        if not os.path.exists('static/qrcodes'):
+            os.makedirs('static/qrcodes')
+
         img.save(f'static/qrcodes/{new_user.username}.png')  # Save QR code image
 
         flash('Registration successful. Please scan the QR code with your Authenticator app.', 'success')
         return redirect(url_for('display_qr', username=new_user.username))
 
+    # This return statement handles the case where the form is not validated or it's a GET request
     return render_template('register.html', form=form)
 
 
 @app.route('/display_qr/<username>')
 def display_qr(username):
     path = f'static/qrcodes/{username}.png'
-    return send_file(path, mimetype='image/png')
+    return render_template('display_qr.html', qr_path=path, username=username)
+
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("5 per minute")  # Adjust the rate limit as needed
+@limiter.limit("5 per minute")
 def login():
     form = LoginForm()
     if form.validate_on_submit():
@@ -215,7 +209,8 @@ def login():
         if user:
             # Check if the account is locked due to failed attempts
             if user.lock_until and user.lock_until > datetime.utcnow():
-                flash('Account is temporarily locked due to multiple failed login attempts. Please try again later.','error')
+                flash('Account is locked due to multiple failed login attempts. Please try again later.',
+                      'error')
                 return render_template('login.html', form=form)
             # If user registered through Google, disallow password login
             if user.google_id and not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
@@ -288,8 +283,7 @@ def create_post():
 
 
 with app.app_context():
-    db.create_all()  # or any other operation that requires app context
-
+    db.create_all()
 if __name__ == '__main__':
     app.run(debug=True)
-    #readme
+
