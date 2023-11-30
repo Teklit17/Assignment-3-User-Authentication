@@ -15,6 +15,7 @@ import qrcode
 import secrets
 from flask_limiter import Limiter
 from datetime import datetime, timedelta
+import json
 
 app = Flask(__name__, template_folder='templates')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog.db'
@@ -33,11 +34,24 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"]
 )
 
+
+
+def load_config():
+    with open('config.json', 'r') as config_file:
+        config = json.load(config_file)
+    return config
+
+
+config = load_config()
+google_client_id = config['client_id']
+google_client_secret = config['client_secret']
+
+
 oauth = OAuth(app)
 google = oauth.register(
     name='google',
-    client_id='154126243374-rotm7jm3v31he80u1is2hcbtum1g07ve.apps.googleusercontent.com',
-    client_secret='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',
+    client_id=google_client_id,
+    client_secret=google_client_secret,
     access_token_url='https://oauth2.googleapis.com/token',
     authorize_url='https://accounts.google.com/o/oauth2/auth',
     api_base_url='https://www.googleapis.com/oauth2/v1/',
@@ -195,8 +209,6 @@ def display_qr(username):
     return render_template('display_qr.html', qr_path=path, username=username)
 
 
-
-
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
 def login():
@@ -286,4 +298,3 @@ with app.app_context():
     db.create_all()
 if __name__ == '__main__':
     app.run(debug=True)
-
